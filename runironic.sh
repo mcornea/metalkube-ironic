@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-# OPtionally configure ironic if the environment variable is set.
+# Optionally configure ironic if the environment variable is set.
 if [ ! -e "$CONFIGURE_IRONIC" ] ; then
     /config/configure_ironic.sh
 fi
