@@ -33,6 +33,29 @@ export RHCOS_IMAGE_FILENAME_LATEST="redhat-coreos-maipo-latest.qcow2"
 curl --insecure --compressed -L -o "${RHCOS_IMAGE_FILENAME_OPENSTACK}" "${RHCOS_IMAGE_URL}/${RHCOS_IMAGE_VERSION}/${RHCOS_IMAGE_FILENAME_OPENSTACK}".gz
 curl --insecure --compressed -L https://images.rdoproject.org/master/rdo_trunk/current-tripleo/ironic-python-agent.tar | tar -xf -
 
+# Workaround so that the dracut network module does dhcp on eth0 & eth1
+RHCOS_IMAGE_FILENAME_RAW="${RHCOS_IMAGE_FILENAME_OPENSTACK}.raw"
+if [ ! -e "$RHCOS_IMAGE_FILENAME_DUALDHCP" ] ; then
+    # Calculate the disksize required for the partitions on the image
+    # we do this to reduce the disk size so that ironic doesn't have to write as
+    # much data during deploy, as the default upstream disk image is way bigger
+    # then it needs to be. Were are adding the partition sizes and multiplying by 1.2.
+    DISKSIZE=$(virt-filesystems -a "$RHCOS_IMAGE_FILENAME_OPENSTACK" -l | grep /dev/ | awk '{s+=$5} END {print s*1.2}')
+    truncate --size $DISKSIZE "${RHCOS_IMAGE_FILENAME_RAW}"
+    virt-resize --no-extra-partition "${RHCOS_IMAGE_FILENAME_OPENSTACK}" "${RHCOS_IMAGE_FILENAME_RAW}"
+
+    LOOPBACK=$(losetup --show -f "${RHCOS_IMAGE_FILENAME_RAW}" | cut -f 3 -d /)
+    mkdir -p /tmp/mnt
+    kpartx -a /dev/$LOOPBACK
+    mount /dev/mapper/${LOOPBACK}p1 /tmp/mnt
+    sed -i -e 's/ip=eth0:dhcp/ip=eth0:dhcp ip=eth1:dhcp/g' /tmp/mnt/grub2/grub.cfg 
+    umount /tmp/mnt
+    kpartx -d /dev/${LOOPBACK}
+    losetup -d /dev/${LOOPBACK}
+    qemu-img convert -O qcow2 -c "$RHCOS_IMAGE_FILENAME_RAW" "$RHCOS_IMAGE_FILENAME_DUALDHCP"
+    rm "$RHCOS_IMAGE_FILENAME_RAW"
+fi
+
 if [ ! -e "$RHCOS_IMAGE_FILENAME_DUALDHCP.md5sum" -o \
      "$RHCOS_IMAGE_FILENAME_DUALDHCP" -nt "$RHCOS_IMAGE_FILENAME_DUALDHCP.md5sum" ] ; then
     md5sum "$RHCOS_IMAGE_FILENAME_DUALDHCP" | cut -f 1 -d " " > "$RHCOS_IMAGE_FILENAME_DUALDHCP.md5sum"
