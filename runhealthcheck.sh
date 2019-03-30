@@ -15,6 +15,6 @@ while true ; do
     DNSMASQPID=$(pidof dnsmasq)
     fuser 69/udp |& grep -w "$DNSMASQPID"
 
-    curl -s http://172.22.0.1:6385 > /dev/null || ( echo "Can't contact ironic-api" && exit 1 )
+    curl -s http://172.22.0.2:6385 > /dev/null || ( echo "Can't contact ironic-api" && exit 1 )
 
 done

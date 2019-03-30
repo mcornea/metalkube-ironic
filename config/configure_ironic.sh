@@ -4,7 +4,7 @@ set -xe
 
 # Configure dnsmasq and pxe boot parameters.
 
-IRONIC_IP=${IRONIC_IP:-"172.22.0.1"}
+IRONIC_IP=${IRONIC_IP:-"172.22.0.2"}
 IRONIC_DHCP_RANGE=${IRONIC_DHCP_RANGE:-"172.22.0.10,172.22.0.100"}
 
 cat /config/dnsmasq.conf | sed -e s/IRONIC_IP/$IRONIC_IP/g -e s/IRONIC_DHCP_RANGE/$IRONIC_DHCP_RANGE/g > /etc/dnsmasq.conf
